@@ -1,0 +1,32 @@
+package templates
+
+templ Home() {
+	@Layout("Home") {
+		<div class="bg-white rounded-lg shadow-lg p-8">
+			<h2 class="text-3xl font-bold mb-4">Welcome to RestySched</h2>
+			<p class="text-gray-700 mb-6">
+				Automated schedule planning system for managing employee schedules and n8n workflow integration.
+			</p>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div class="border border-gray-200 rounded-lg p-6">
+					<h3 class="text-xl font-semibold mb-2">Manage Employees</h3>
+					<p class="text-gray-600 mb-4">
+						Add, edit, and manage employee information including roles, descriptions, and monthly hours.
+					</p>
+					<a href="/employees" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 inline-block">
+						Go to Employees
+					</a>
+				</div>
+				<div class="border border-gray-200 rounded-lg p-6">
+					<h3 class="text-xl font-semibold mb-2">View Schedules</h3>
+					<p class="text-gray-600 mb-4">
+						View generated schedules and send them to n8n for automated processing.
+					</p>
+					<a href="/schedules" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 inline-block">
+						Go to Schedules
+					</a>
+				</div>
+			</div>
+		</div>
+	}
+}
