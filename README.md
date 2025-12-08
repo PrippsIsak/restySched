@@ -6,7 +6,7 @@ A Go-based schedule planning automation system that manages employee schedules a
 
 - **Employee Management**: Create, update, and manage employees with roles and descriptions
 - **Automated Schedule Generation**: Automatically generates biweekly schedules
-- **n8n Integration**: Sends schedule data to n8n webhooks for workflow automation
+- **n8n Integration** (Optional): Sends schedule data to n8n webhooks for workflow automation
 - **Repository Pattern**: Clean architecture with dependency injection for easy testing
 - **Templ Templates**: Modern Go templating with HTMX for dynamic UI
 - **MongoDB Database**: Scalable NoSQL database for data persistence
@@ -38,7 +38,7 @@ restySched/
 - Go 1.23 or higher
 - MongoDB 4.4 or higher (running locally or remote)
 - Templ CLI (for template generation)
-- n8n instance with webhook configured
+- n8n instance with webhook configured (optional - can be added later)
 
 ## Installation
 
@@ -68,23 +68,44 @@ templ generate
 cp .env.example .env
 ```
 
-6. Start MongoDB (if running locally):
-```bash
-# Using Docker
-docker run -d -p 27017:27017 --name mongodb mongo:latest
+6. Set up MongoDB (choose one):
 
-# Or use your local MongoDB installation
+**Option A: MongoDB Atlas (Cloud - Recommended)**
+- Free tier available
+- See [MONGODB_ATLAS_SETUP.md](MONGODB_ATLAS_SETUP.md) for complete guide
+- Connection string: `mongodb+srv://user:pass@cluster.mongodb.net/`
+
+**Option B: Local with Docker (Easiest for local dev)**
+```bash
+docker-compose up -d
+```
+
+**Option C: Local MongoDB Installation**
+```bash
 mongod
 ```
 
 7. Update the `.env` file with your configuration:
+
+**For MongoDB Atlas:**
+```env
+SERVER_PORT=8080
+MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+MONGO_DATABASE=restysched
+N8N_WEBHOOK_URL=  # Optional - leave empty to run without n8n
+ENABLE_SCHEDULER=true
+```
+
+**For Local MongoDB:**
 ```env
 SERVER_PORT=8080
 MONGO_URI=mongodb://localhost:27017
 MONGO_DATABASE=restysched
-N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/your-webhook-id
+N8N_WEBHOOK_URL=  # Optional - leave empty to run without n8n
 ENABLE_SCHEDULER=true
 ```
+
+**Note:** n8n integration is optional. You can start using RestySched without configuring n8n and add it later when ready.
 
 ## Running the Application
 
@@ -227,9 +248,9 @@ All configuration is managed through environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `SERVER_PORT` | HTTP server port | 8080 |
-| `MONGO_URI` | MongoDB connection URI | mongodb://localhost:27017 |
-| `MONGO_DATABASE` | MongoDB database name | restysched |
-| `N8N_WEBHOOK_URL` | n8n webhook URL | (required) |
+| `MONGO_URI` | MongoDB connection URI (required) | mongodb://localhost:27017 |
+| `MONGO_DATABASE` | MongoDB database name (required) | restysched |
+| `N8N_WEBHOOK_URL` | n8n webhook URL (optional) | empty |
 | `ENABLE_SCHEDULER` | Enable automated scheduling | true |
 
 ## MongoDB Collections

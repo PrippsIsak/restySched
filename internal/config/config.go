@@ -37,15 +37,13 @@ func Load() (*Config, error) {
 
 // Validate checks if the configuration is valid
 func (c *Config) Validate() error {
-	if c.N8NWebhookURL == "" {
-		return fmt.Errorf("N8N_WEBHOOK_URL is required")
-	}
 	if c.MongoURI == "" {
 		return fmt.Errorf("MONGO_URI is required")
 	}
 	if c.MongoDatabase == "" {
 		return fmt.Errorf("MONGO_DATABASE is required")
 	}
+	// N8N_WEBHOOK_URL is optional - app can run without n8n integration
 	return nil
 }
 

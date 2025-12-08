@@ -33,6 +33,11 @@ func NewClient(webhookURL string) Client {
 
 // SendSchedule sends schedule data to n8n webhook
 func (c *client) SendSchedule(ctx context.Context, payload domain.N8NSchedulePayload) error {
+	// If webhook URL is not configured, skip sending
+	if c.webhookURL == "" {
+		return fmt.Errorf("n8n webhook URL not configured - please set N8N_WEBHOOK_URL in .env file")
+	}
+
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal payload: %w", err)

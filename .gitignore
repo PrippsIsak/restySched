@@ -44,3 +44,4 @@ Thumbs.db
 
 # Templ generated files
 *_templ.go
+.env

@@ -2,7 +2,16 @@
 
 This guide will help you set up an n8n workflow to receive schedule data from RestySched.
 
-## Quick Start
+## 🚀 Super Quick Start - Ready-Made Workflows
+
+**Want to skip the manual setup?** We've created ready-to-use n8n workflows for you!
+
+1. **Go to** [`n8n-workflows/`](n8n-workflows/) directory
+2. **Import** `simple-starter.json` or `schedule-automation.json` into n8n
+3. **Copy** the webhook URL to your `.env` file
+4. **Done!** See [`n8n-workflows/README.md`](n8n-workflows/README.md) for details
+
+## Quick Start (Manual)
 
 1. Create a new workflow in n8n
 2. Add a Webhook trigger node

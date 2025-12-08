@@ -1,0 +1,126 @@
+{
+  "name": "RestySched - Simple Starter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "restysched",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "restysched-simple"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Schedule received successfully\", \"schedule_id\": $json.schedule_id, \"employees_count\": $json.employees.length } }}"
+      },
+      "id": "response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#general",
+        "text": "=📅 **New Schedule Generated**\n\n• Schedule ID: `{{ $json.schedule_id }}`\n• Period: {{ new Date($json.period_start).toLocaleDateString() }} to {{ new Date($json.period_end).toLocaleDateString() }}\n• Total Employees: {{ $json.employees.length }}\n\n**Employees:**\n{{ $json.employees.map(e => `• ${e.name} (${e.role}) - ${e.monthly_hours}h/month`).join('\\n') }}",
+        "otherOptions": {}
+      },
+      "id": "slack",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [640, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack"
+        }
+      },
+      "disabled": true,
+      "notes": "Enable this after connecting Slack credentials"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "employees",
+        "options": {}
+      },
+      "id": "split",
+      "name": "Split Employees",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [640, 400]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@yourcompany.com",
+        "toEmail": "={{ $json.email }}",
+        "subject": "=Your Work Schedule - {{ new Date($('Webhook Trigger').item.json.period_start).toLocaleDateString() }}",
+        "text": "=Hi {{ $json.name }},\n\nYour schedule is ready!\n\n📋 Details:\n• Role: {{ $json.role }}\n• Description: {{ $json.role_description }}\n• Monthly Hours: {{ $json.monthly_hours }}\n• Period: {{ new Date($('Webhook Trigger').item.json.period_start).toLocaleDateString() }} to {{ new Date($('Webhook Trigger').item.json.period_end).toLocaleDateString() }}\n\nBest regards,\nHR Team",
+        "options": {}
+      },
+      "id": "email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [840, 400],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "SMTP"
+        }
+      },
+      "disabled": true,
+      "notes": "Enable this after configuring SMTP credentials"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split Employees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Employees": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-12-08T00:00:00.000Z",
+  "versionId": "1"
+}

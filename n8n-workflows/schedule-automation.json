@@ -1,0 +1,312 @@
+{
+  "name": "RestySched - Schedule Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "restysched-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "restysched-schedule-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Schedule received\", \"schedule_id\": $json.schedule_id } }}"
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract schedule information\nconst scheduleData = {\n  schedule_id: $input.first().json.schedule_id,\n  period_start: $input.first().json.period_start,\n  period_end: $input.first().json.period_end,\n  total_employees: $input.first().json.employees.length,\n  generated_at: $input.first().json.generated_at,\n  employees: $input.first().json.employees\n};\n\n// Format dates for display\nconst formatDate = (dateStr) => {\n  const date = new Date(dateStr);\n  return date.toLocaleDateString('en-US', { \n    year: 'numeric', \n    month: 'long', \n    day: 'numeric' \n  });\n};\n\nscheduleData.period_start_formatted = formatDate(scheduleData.period_start);\nscheduleData.period_end_formatted = formatDate(scheduleData.period_end);\n\nreturn { json: scheduleData };"
+      },
+      "id": "process-data",
+      "name": "Process Schedule Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "summary",
+              "name": "summary_text",
+              "value": "=📅 New Schedule Generated\n\nSchedule ID: {{ $json.schedule_id }}\nPeriod: {{ $json.period_start_formatted }} - {{ $json.period_end_formatted }}\nTotal Employees: {{ $json.total_employees }}\n\n👥 Employees:\n{{ $json.employees.map(e => `• ${e.name} (${e.role}) - ${e.monthly_hours}h/month`).join('\\n') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-summary",
+      "name": "Create Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "employees",
+        "options": {}
+      },
+      "id": "split-employees",
+      "name": "Split Into Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "channel": "#schedules",
+        "text": "={{ $('Create Summary').item.json.summary_text }}",
+        "otherOptions": {}
+      },
+      "id": "send-slack",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1050, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "1",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendEmail",
+        "email": "={{ $json.email }}",
+        "subject": "=Your Schedule - {{ $('Process Schedule Data').item.json.period_start_formatted }} to {{ $('Process Schedule Data').item.json.period_end_formatted }}",
+        "message": "=Hi {{ $json.name }},\n\nYour schedule for the period {{ $('Process Schedule Data').item.json.period_start_formatted }} to {{ $('Process Schedule Data').item.json.period_end_formatted }} is now available.\n\n📋 Details:\nRole: {{ $json.role }}\nDescription: {{ $json.role_description }}\nMonthly Hours: {{ $json.monthly_hours }}\n\nBest regards,\nSchedule Team",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email to Employee",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1050, 500],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "your-spreadsheet-id",
+          "mode": "list",
+          "cachedResultName": "Schedules"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Schedule ID": "={{ $('Process Schedule Data').item.json.schedule_id }}",
+            "Period Start": "={{ $('Process Schedule Data').item.json.period_start }}",
+            "Period End": "={{ $('Process Schedule Data').item.json.period_end }}",
+            "Employee Name": "={{ $json.name }}",
+            "Email": "={{ $json.email }}",
+            "Role": "={{ $json.role }}",
+            "Monthly Hours": "={{ $json.monthly_hours }}",
+            "Generated At": "={{ $('Process Schedule Data').item.json.generated_at }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "save-to-sheets",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1050, 700],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "3",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendarId": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list",
+          "cachedResultName": "Primary"
+        },
+        "start": "={{ $('Process Schedule Data').item.json.period_start }}",
+        "end": "={{ $('Process Schedule Data').item.json.period_end }}",
+        "summary": "=Schedule: {{ $json.name }}",
+        "description": "=Role: {{ $json.role }}\\nDescription: {{ $json.role_description }}\\nMonthly Hours: {{ $json.monthly_hours }}",
+        "attendees": "={{ $json.email }}",
+        "options": {}
+      },
+      "id": "create-calendar-event",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [1050, 900],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "4",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.monthly_hours }}",
+              "operation": "larger",
+              "value2": 120
+            }
+          ]
+        }
+      },
+      "id": "check-hours",
+      "name": "High Hours Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "channel": "#alerts",
+        "text": "=⚠️ High hours detected for {{ $json.name }}: {{ $json.monthly_hours }}h/month",
+        "otherOptions": {}
+      },
+      "id": "alert-high-hours",
+      "name": "Alert High Hours",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1450, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "1",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Process Schedule Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Schedule Data": {
+      "main": [
+        [
+          {
+            "node": "Create Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split Into Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Summary": {
+      "main": [
+        [
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Into Items": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Employee",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email to Employee": {
+      "main": [
+        [
+          {
+            "node": "High Hours Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Hours Check": {
+      "main": [
+        [
+          {
+            "node": "Alert High Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-12-08T00:00:00.000Z",
+  "versionId": "1"
+}

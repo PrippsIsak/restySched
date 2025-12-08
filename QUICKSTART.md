@@ -40,12 +40,20 @@ go mod download
 templ generate
 ```
 
-4. **Start MongoDB:**
-```bash
-# Using Docker (recommended)
-docker run -d -p 27017:27017 --name mongodb mongo:latest
+4. **Set up MongoDB (choose one):**
 
-# Or use your local MongoDB installation
+**Option A: MongoDB Atlas (Cloud)**
+- [Follow Atlas setup guide](MONGODB_ATLAS_SETUP.md)
+- Free tier available
+- Recommended for production
+
+**Option B: Local with Docker**
+```bash
+docker-compose up -d
+```
+
+**Option C: Local Installation**
+```bash
 mongod
 ```
 
@@ -55,11 +63,22 @@ cp .env.example .env
 ```
 
 6. **Update `.env` with your configuration:**
+
+**For MongoDB Atlas:**
+```env
+MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority
+MONGO_DATABASE=restysched
+N8N_WEBHOOK_URL=  # Optional
+```
+
+**For Local MongoDB:**
 ```env
 MONGO_URI=mongodb://localhost:27017
 MONGO_DATABASE=restysched
-N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/your-id
+N8N_WEBHOOK_URL=  # Optional
 ```
+
+**Note:** n8n is optional and can be added later.
 
 ## Running the Application
 

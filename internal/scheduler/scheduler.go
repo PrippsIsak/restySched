@@ -68,9 +68,10 @@ func (s *Scheduler) generateAndSendSchedule() {
 
 	log.Printf("Schedule generated successfully: %s", schedule.ID)
 
-	// Send to n8n
+	// Send to n8n (if configured)
 	if err := s.scheduleService.SendScheduleToN8N(ctx, schedule.ID); err != nil {
-		log.Printf("ERROR: Failed to send schedule to n8n: %v", err)
+		log.Printf("WARNING: Failed to send schedule to n8n: %v", err)
+		log.Printf("Schedule saved but not sent to n8n. You can manually send it later from the UI.")
 		return
 	}
 
