@@ -2,6 +2,7 @@ package templates
 
 import "github.com/isak/restySched/internal/domain"
 import "fmt"
+import "time"
 
 templ ScheduleList(schedules []domain.Schedule) {
 	@Layout("Schedules") {
@@ -34,6 +35,9 @@ templ ScheduleCard(schedule domain.Schedule) {
 				<p class="text-gray-600">
 					{ schedule.PeriodStart.Format("Jan 2, 2006") } - { schedule.PeriodEnd.Format("Jan 2, 2006") }
 				</p>
+				<p class="text-sm text-gray-500 mt-1">
+					{ fmt.Sprintf("%d shifts", len(schedule.Assignments)) } | { fmt.Sprintf("%d employees", len(schedule.Employees)) }
+				</p>
 			</div>
 			<div class="flex items-center space-x-2">
 				if schedule.Status == domain.ScheduleStatusDraft {
@@ -45,17 +49,33 @@ templ ScheduleCard(schedule domain.Schedule) {
 				}
 			</div>
 		</div>
-		<div class="mb-4">
-			<h4 class="font-semibold mb-2">Employees ({ fmt.Sprintf("%d", len(schedule.Employees)) })</h4>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-				for _, emp := range schedule.Employees {
-					<div class="bg-gray-50 p-3 rounded">
-						<div class="font-medium">{ emp.Name }</div>
-						<div class="text-sm text-gray-600">{ emp.Role } - { fmt.Sprintf("%d", emp.MonthlyHours) }h/month</div>
-					</div>
-				}
+
+		<!-- Shift Assignments Section -->
+		if len(schedule.Assignments) > 0 {
+			<div class="mb-4">
+				<h4 class="font-semibold mb-3">Shift Assignments</h4>
+				@ShiftAssignmentTable(schedule.Assignments, schedule.PeriodStart, schedule.PeriodEnd)
 			</div>
-		</div>
+
+			<!-- Employee Summary -->
+			<div class="mb-4">
+				<h4 class="font-semibold mb-2">Employee Hours Summary</h4>
+				@EmployeeHoursSummary(schedule.Employees, schedule.Assignments)
+			</div>
+		} else {
+			<div class="mb-4">
+				<h4 class="font-semibold mb-2">Employees ({ fmt.Sprintf("%d", len(schedule.Employees)) })</h4>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+					for _, emp := range schedule.Employees {
+						<div class="bg-gray-50 p-3 rounded">
+							<div class="font-medium">{ emp.Name }</div>
+							<div class="text-sm text-gray-600">{ emp.Role } - { fmt.Sprintf("%d", emp.MonthlyHours) }h/month</div>
+						</div>
+					}
+				</div>
+			</div>
+		}
+
 		<div class="flex justify-end space-x-2">
 			if !schedule.SentToN8N {
 				<button
@@ -72,7 +92,7 @@ templ ScheduleCard(schedule domain.Schedule) {
 				</span>
 			} else {
 				<span class="text-green-600 font-medium">
-					Sent at N/A
+					Sent
 				</span>
 			}
 			<button
@@ -86,4 +106,104 @@ templ ScheduleCard(schedule domain.Schedule) {
 			</button>
 		</div>
 	</div>
+}
+
+templ ShiftAssignmentTable(assignments []domain.ShiftAssignment, periodStart, periodEnd time.Time) {
+	<div class="overflow-x-auto">
+		<table class="min-w-full divide-y divide-gray-200">
+			<thead class="bg-gray-50">
+				<tr>
+					<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+					<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+					<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+					<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift Type</th>
+					<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+					<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
+				</tr>
+			</thead>
+			<tbody class="bg-white divide-y divide-gray-200">
+				for _, assignment := range assignments {
+					<tr class="hover:bg-gray-50">
+						<td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+							{ assignment.Date.Format("Jan 2") }
+						</td>
+						<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+							{ assignment.Date.Format("Monday") }
+						</td>
+						<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+							{ assignment.EmployeeName }
+						</td>
+						<td class="px-4 py-3 whitespace-nowrap">
+							@ShiftTypeBadge(assignment.ShiftType)
+						</td>
+						<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+							{ assignment.StartTime } - { assignment.EndTime }
+						</td>
+						<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+							{ fmt.Sprintf("%.1f", assignment.Hours) }h
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+}
+
+templ ShiftTypeBadge(shiftType string) {
+	if shiftType == domain.ShiftTypeFullDay {
+		<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Full Day</span>
+	} else if shiftType == domain.ShiftTypeMorning {
+		<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Morning</span>
+	} else if shiftType == domain.ShiftTypeAfternoon {
+		<span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">Afternoon</span>
+	} else if shiftType == domain.ShiftTypeEvening {
+		<span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Evening</span>
+	} else if shiftType == domain.ShiftTypeNight {
+		<span class="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">Night</span>
+	} else {
+		<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{ shiftType }</span>
+	}
+}
+
+templ EmployeeHoursSummary(employees []domain.Employee, assignments []domain.ShiftAssignment) {
+	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+		for _, emp := range employees {
+			<div class="bg-gray-50 p-3 rounded">
+				<div class="font-medium">{ emp.Name }</div>
+				<div class="text-sm text-gray-600">{ emp.Role }</div>
+				<div class="mt-2 flex justify-between text-sm">
+					<span class="text-gray-500">Target:</span>
+					<span class="font-semibold">{ fmt.Sprintf("%d", emp.MonthlyHours) }h/month</span>
+				</div>
+				<div class="flex justify-between text-sm">
+					<span class="text-gray-500">Assigned:</span>
+					<span class="font-semibold text-blue-600">{ fmt.Sprintf("%.1f", calculateEmployeeHours(emp.ID, assignments)) }h</span>
+				</div>
+				<div class="flex justify-between text-sm">
+					<span class="text-gray-500">Shifts:</span>
+					<span class="font-semibold">{ fmt.Sprintf("%d", countEmployeeShifts(emp.ID, assignments)) }</span>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+func calculateEmployeeHours(employeeID string, assignments []domain.ShiftAssignment) float64 {
+	var total float64
+	for _, a := range assignments {
+		if a.EmployeeID == employeeID {
+			total += a.Hours
+		}
+	}
+	return total
+}
+
+func countEmployeeShifts(employeeID string, assignments []domain.ShiftAssignment) int {
+	count := 0
+	for _, a := range assignments {
+		if a.EmployeeID == employeeID {
+			count++
+		}
+	}
+	return count
 }

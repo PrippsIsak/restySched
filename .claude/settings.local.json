@@ -4,7 +4,10 @@
       "Bash(mkdir:*)",
       "Bash(go get:*)",
       "Bash(go mod tidy:*)",
-      "Bash(go test:*)"
+      "Bash(go test:*)",
+      "Bash(rm:*)",
+      "Bash(go build:*)",
+      "Bash(templ generate:*)"
     ],
     "deny": [],
     "ask": []

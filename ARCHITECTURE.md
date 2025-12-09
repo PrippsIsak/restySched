@@ -31,7 +31,7 @@ RestySched is a schedule planning automation system built with Go, following cle
 │ - Schedule Repository    │
 │                          │
 │ Implementation:          │
-│ - SQLite                 │
+│ - MongoDB                │
 └──────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
@@ -68,14 +68,14 @@ RestySched is a schedule planning automation system built with Go, following cle
 **Components**:
 - `employee_repository.go`: Employee data access interface
 - `schedule_repository.go`: Schedule data access interface
-- `sqlite/`: SQLite implementation
-  - `employee_repository.go`: SQLite employee implementation
-  - `schedule_repository.go`: SQLite schedule implementation
-  - `db.go`: Database initialization and migrations
+- `mongodb/`: MongoDB implementation
+  - `employee_repository.go`: MongoDB employee implementation
+  - `schedule_repository.go`: MongoDB schedule implementation
+  - `db.go`: Database initialization and index creation
 
 **Key Pattern**: Repository Pattern
 - Interfaces defined in repository package
-- Implementations in subdirectories (e.g., `sqlite/`)
+- Implementations in subdirectories (e.g., `mongodb/`)
 - Easy to swap implementations or add new ones
 - Enables dependency injection for testing
 
@@ -167,8 +167,8 @@ The application uses constructor injection throughout:
 
 ```go
 // Repositories
-employeeRepo := sqlite.NewEmployeeRepository(db)
-scheduleRepo := sqlite.NewScheduleRepository(db)
+employeeRepo := mongodb.NewEmployeeRepository(db)
+scheduleRepo := mongodb.NewScheduleRepository(db)
 
 // External services
 n8nClient := n8n.NewClient(webhookURL)
@@ -215,7 +215,7 @@ employee, err := service.CreateEmployee(ctx, input)
 ### Integration Testing
 
 For integration tests:
-1. Use in-memory SQLite (`:memory:`)
+1. Use MongoDB test containers or in-memory MongoDB
 2. Test full stack except HTTP layer
 3. Verify database interactions
 
@@ -287,8 +287,9 @@ Each repository interface focuses on a single entity with specific operations.
 
 Environment variables:
 - `SERVER_PORT`: HTTP server port
-- `DATABASE_PATH`: SQLite database file
-- `N8N_WEBHOOK_URL`: n8n webhook endpoint
+- `MONGO_URI`: MongoDB connection URI
+- `MONGO_DATABASE`: MongoDB database name
+- `N8N_WEBHOOK_URL`: n8n webhook endpoint (optional)
 - `ENABLE_SCHEDULER`: Enable/disable automation
 
 ## Error Handling
@@ -311,44 +312,62 @@ Domain Err  Check Err   Status Code
 
 ## Database Schema
 
-### Employees Table
+### Employees Collection (MongoDB)
 
-```sql
-CREATE TABLE employees (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    role TEXT NOT NULL,
-    role_description TEXT NOT NULL,
-    monthly_hours INTEGER NOT NULL,
-    active BOOLEAN NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
-);
+```javascript
+{
+    id: String,              // Unique identifier
+    name: String,            // Employee name
+    email: String,           // Unique email
+    role: String,            // Job role
+    role_description: String,// Role details
+    monthly_hours: Number,   // Expected monthly hours
+    active: Boolean,         // Employment status
+    created_at: ISODate,     // Creation timestamp
+    updated_at: ISODate      // Last update timestamp
+}
+
+// Indexes
+db.employees.createIndex({ "email": 1 }, { unique: true })
+db.employees.createIndex({ "active": 1 })
 ```
 
-### Schedules Table
+### Schedules Collection (MongoDB)
 
-```sql
-CREATE TABLE schedules (
-    id TEXT PRIMARY KEY,
-    period_start DATETIME NOT NULL,
-    period_end DATETIME NOT NULL,
-    employees TEXT NOT NULL,  -- JSON array
-    status TEXT NOT NULL,
-    sent_to_n8n BOOLEAN NOT NULL DEFAULT 0,
-    sent_at DATETIME,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
-);
+```javascript
+{
+    id: String,              // Unique identifier
+    period_start: ISODate,   // Period start date
+    period_end: ISODate,     // Period end date
+    employees: [             // Array of employee snapshots
+        {
+            id: String,
+            name: String,
+            email: String,
+            role: String,
+            role_description: String,
+            monthly_hours: Number
+        }
+    ],
+    status: String,          // draft/published/archived
+    sent_to_n8n: Boolean,    // n8n webhook status
+    sent_at: ISODate,        // When sent to n8n
+    created_at: ISODate,     // Creation timestamp
+    updated_at: ISODate      // Last update timestamp
+}
+
+// Indexes
+db.schedules.createIndex({ "period_start": 1, "period_end": 1 })
+db.schedules.createIndex({ "sent_to_n8n": 1 })
 ```
 
 ## Future Enhancements
 
 Potential improvements maintaining current architecture:
 
-1. **Add PostgreSQL Repository**
+1. **Add Alternative Repository Implementations**
    - Implement `postgresql.EmployeeRepository`
+   - Implement `redis.CacheRepository`
    - No changes to service or handler layers
 
 2. **Add API Layer**

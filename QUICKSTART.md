@@ -269,7 +269,7 @@ restySched/
 │   ├── handler/         # HTTP handlers
 │   ├── n8n/            # n8n integration
 │   ├── repository/      # Data access layer
-│   │   └── sqlite/     # SQLite implementation
+│   │   └── mongodb/    # MongoDB implementation
 │   ├── scheduler/       # Automated scheduling
 │   └── service/         # Business logic
 ├── web/templates/       # UI templates
@@ -306,12 +306,15 @@ Generate templates:
 templ generate
 ```
 
-### Database Locked Error
+### MongoDB Connection Error
 
-Close any other connections to the database:
+1. Verify MongoDB is running:
 ```bash
-rm restysched.db  # Delete and restart
+docker ps  # Check if MongoDB container is running
 ```
+
+2. Check connection string in `.env`
+3. For Atlas: Verify IP whitelist and credentials
 
 ### Build Errors
 
@@ -332,7 +335,7 @@ make build
 
 1. **Define domain models** in `internal/domain/`
 2. **Create repository interface** in `internal/repository/`
-3. **Implement repository** in `internal/repository/sqlite/`
+3. **Implement repository** in `internal/repository/mongodb/`
 4. **Add business logic** in `internal/service/`
 5. **Create handlers** in `internal/handler/`
 6. **Build templates** in `web/templates/`
@@ -423,9 +426,9 @@ docker run -p 8080:8080 --env-file .env restysched
 
 ✅ Employee management CRUD
 ✅ Schedule generation
-✅ n8n webhook integration
+✅ n8n webhook integration (optional)
 ✅ Automated biweekly scheduling
-✅ SQLite database
+✅ MongoDB database (local or Atlas)
 ✅ Repository pattern with DI
 ✅ Comprehensive tests
 ✅ Clean architecture

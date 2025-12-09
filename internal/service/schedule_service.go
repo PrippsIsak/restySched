@@ -12,9 +12,10 @@ import (
 
 // ScheduleService handles business logic for schedules
 type ScheduleService struct {
-	scheduleRepo repository.ScheduleRepository
-	employeeRepo repository.EmployeeRepository
-	n8nClient    n8n.Client
+	scheduleRepo   repository.ScheduleRepository
+	employeeRepo   repository.EmployeeRepository
+	n8nClient      n8n.Client
+	shiftGenerator *ShiftGenerator
 }
 
 // NewScheduleService creates a new schedule service
@@ -24,9 +25,10 @@ func NewScheduleService(
 	n8nClient n8n.Client,
 ) *ScheduleService {
 	return &ScheduleService{
-		scheduleRepo: scheduleRepo,
-		employeeRepo: employeeRepo,
-		n8nClient:    n8nClient,
+		scheduleRepo:   scheduleRepo,
+		employeeRepo:   employeeRepo,
+		n8nClient:      n8nClient,
+		shiftGenerator: NewShiftGenerator(),
 	}
 }
 
@@ -42,10 +44,18 @@ func (s *ScheduleService) GenerateSchedule(ctx context.Context, periodStart, per
 		return nil, fmt.Errorf("failed to get active employees: %w", err)
 	}
 
+	if len(employees) == 0 {
+		return nil, fmt.Errorf("no active employees found")
+	}
+
+	// Generate shift assignments
+	assignments := s.shiftGenerator.GenerateShifts(employees, periodStart, periodEnd)
+
 	schedule := &domain.Schedule{
 		PeriodStart: periodStart,
 		PeriodEnd:   periodEnd,
 		Employees:   employees,
+		Assignments: assignments,
 		Status:      domain.ScheduleStatusDraft,
 		SentToN8N:   false,
 	}
@@ -113,9 +123,48 @@ func (s *ScheduleService) DeleteSchedule(ctx context.Context, id string) error {
 	return s.scheduleRepo.Delete(ctx, id)
 }
 
+// GetScheduleStats returns statistics for a schedule
+func (s *ScheduleService) GetScheduleStats(schedule *domain.Schedule) ScheduleStats {
+	stats := ScheduleStats{
+		TotalEmployees:    len(schedule.Employees),
+		TotalAssignments:  len(schedule.Assignments),
+		TotalHours:        0,
+		EmployeeStats:     make(map[string]EmployeeShiftStats),
+		ShiftDistribution: make(map[string]int),
+	}
+
+	// Calculate stats for each employee
+	for _, emp := range schedule.Employees {
+		empStats := s.shiftGenerator.GetEmployeeStats(emp.ID, schedule.Assignments)
+		stats.EmployeeStats[emp.ID] = empStats
+		stats.TotalHours += empStats.TotalHours
+
+		// Count shift types
+		for shiftType, count := range empStats.ShiftTypes {
+			stats.ShiftDistribution[shiftType] += count
+		}
+	}
+
+	return stats
+}
+
+// ScheduleStats holds statistics about a schedule
+type ScheduleStats struct {
+	TotalEmployees    int
+	TotalAssignments  int
+	TotalHours        float64
+	EmployeeStats     map[string]EmployeeShiftStats
+	ShiftDistribution map[string]int
+}
+
 func (s *ScheduleService) buildN8NPayload(schedule *domain.Schedule) domain.N8NSchedulePayload {
+	// Get statistics
+	stats := s.GetScheduleStats(schedule)
+
+	// Build employee data with shift stats
 	employees := make([]domain.N8NEmployeeData, len(schedule.Employees))
 	for i, emp := range schedule.Employees {
+		empStats := stats.EmployeeStats[emp.ID]
 		employees[i] = domain.N8NEmployeeData{
 			ID:              emp.ID,
 			Name:            emp.Name,
@@ -123,6 +172,8 @@ func (s *ScheduleService) buildN8NPayload(schedule *domain.Schedule) domain.N8NS
 			Role:            emp.Role,
 			RoleDescription: emp.RoleDescription,
 			MonthlyHours:    emp.MonthlyHours,
+			AssignedHours:   empStats.TotalHours,
+			AssignedShifts:  empStats.TotalShifts,
 		}
 	}
 
@@ -131,6 +182,9 @@ func (s *ScheduleService) buildN8NPayload(schedule *domain.Schedule) domain.N8NS
 		PeriodStart: schedule.PeriodStart.Format(time.RFC3339),
 		PeriodEnd:   schedule.PeriodEnd.Format(time.RFC3339),
 		Employees:   employees,
+		Assignments: schedule.Assignments,
+		TotalShifts: stats.TotalAssignments,
+		TotalHours:  stats.TotalHours,
 		GeneratedAt: time.Now().Format(time.RFC3339),
 	}
 }
