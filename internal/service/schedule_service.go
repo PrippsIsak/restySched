@@ -14,6 +14,7 @@ import (
 type ScheduleService struct {
 	scheduleRepo   repository.ScheduleRepository
 	employeeRepo   repository.EmployeeRepository
+	companyRepo    repository.CompanyConfigRepository
 	n8nClient      n8n.Client
 	shiftGenerator *ShiftGenerator
 }
@@ -22,11 +23,13 @@ type ScheduleService struct {
 func NewScheduleService(
 	scheduleRepo repository.ScheduleRepository,
 	employeeRepo repository.EmployeeRepository,
+	companyRepo repository.CompanyConfigRepository,
 	n8nClient n8n.Client,
 ) *ScheduleService {
 	return &ScheduleService{
 		scheduleRepo:   scheduleRepo,
 		employeeRepo:   employeeRepo,
+		companyRepo:    companyRepo,
 		n8nClient:      n8nClient,
 		shiftGenerator: NewShiftGenerator(),
 	}
@@ -88,7 +91,7 @@ func (s *ScheduleService) SendScheduleToN8N(ctx context.Context, scheduleID stri
 	}
 
 	// Convert to n8n payload
-	payload := s.buildN8NPayload(schedule)
+	payload := s.buildN8NPayload(ctx, schedule)
 
 	// Send to n8n
 	if err := s.n8nClient.SendSchedule(ctx, payload); err != nil {
@@ -157,7 +160,7 @@ type ScheduleStats struct {
 	ShiftDistribution map[string]int
 }
 
-func (s *ScheduleService) buildN8NPayload(schedule *domain.Schedule) domain.N8NSchedulePayload {
+func (s *ScheduleService) buildN8NPayload(ctx context.Context, schedule *domain.Schedule) domain.N8NSchedulePayload {
 	// Get statistics
 	stats := s.GetScheduleStats(schedule)
 
@@ -177,14 +180,21 @@ func (s *ScheduleService) buildN8NPayload(schedule *domain.Schedule) domain.N8NS
 		}
 	}
 
+	// Get company context for AI agent
+	companyContext := ""
+	if companyConfig, err := s.companyRepo.GetOrCreate(ctx); err == nil {
+		companyContext = companyConfig.GetContextForAI()
+	}
+
 	return domain.N8NSchedulePayload{
-		ScheduleID:  schedule.ID,
-		PeriodStart: schedule.PeriodStart.Format(time.RFC3339),
-		PeriodEnd:   schedule.PeriodEnd.Format(time.RFC3339),
-		Employees:   employees,
-		Assignments: schedule.Assignments,
-		TotalShifts: stats.TotalAssignments,
-		TotalHours:  stats.TotalHours,
-		GeneratedAt: time.Now().Format(time.RFC3339),
+		ScheduleID:     schedule.ID,
+		PeriodStart:    schedule.PeriodStart.Format(time.RFC3339),
+		PeriodEnd:      schedule.PeriodEnd.Format(time.RFC3339),
+		Employees:      employees,
+		Assignments:    schedule.Assignments,
+		TotalShifts:    stats.TotalAssignments,
+		TotalHours:     stats.TotalHours,
+		GeneratedAt:    time.Now().Format(time.RFC3339),
+		CompanyContext: companyContext,
 	}
 }

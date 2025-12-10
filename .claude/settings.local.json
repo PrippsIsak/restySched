@@ -7,7 +7,8 @@
       "Bash(go test:*)",
       "Bash(rm:*)",
       "Bash(go build:*)",
-      "Bash(templ generate:*)"
+      "Bash(templ generate:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

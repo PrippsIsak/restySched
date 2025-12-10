@@ -1,15 +1,39 @@
-# n8n Workflow Setup Guide
+# n8n Integration Setup Guide
 
-This guide will help you set up an n8n workflow to receive schedule data from RestySched.
+This guide shows you how to set up n8n with RestySched to use AI for schedule optimization.
 
-## 🚀 Super Quick Start - Ready-Made Workflows
+## 🚀 Quick Start with Docker Compose
+
+### 1. Start all services (MongoDB + n8n + RestySched):
+
+```bash
+docker-compose -f docker-compose.n8n.yml up -d
+```
+
+This will start:
+- **MongoDB** on port 27017
+- **n8n** on port 5678 (http://localhost:5678)
+- **RestySched** on port 8080 (http://localhost:8080)
+
+### 2. Access n8n:
+
+1. Open browser to http://localhost:5678
+2. Login with:
+   - Username: `admin`
+   - Password: `admin`
+
+### 3. Create a Webhook Workflow in n8n
 
 **Want to skip the manual setup?** We've created ready-to-use n8n workflows for you!
 
 1. **Go to** [`n8n-workflows/`](n8n-workflows/) directory
-2. **Import** `simple-starter.json` or `schedule-automation.json` into n8n
-3. **Copy** the webhook URL to your `.env` file
-4. **Done!** See [`n8n-workflows/README.md`](n8n-workflows/README.md) for details
+2. **Choose a workflow:**
+   - `simple-starter.json` - Basic notifications
+   - `schedule-automation.json` - Full automation with Sheets/Calendar
+   - `ai-schedule-analysis.json` - **AI-powered schedule analysis** ⭐
+3. **Import** your chosen workflow into n8n
+4. **Copy** the webhook URL to your `.env` file
+5. **Done!** See [`n8n-workflows/README.md`](n8n-workflows/README.md) for setup details
 
 ## Quick Start (Manual)
 

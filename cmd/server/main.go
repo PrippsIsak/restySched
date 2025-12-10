@@ -39,19 +39,21 @@ func main() {
 	// Initialize repositories
 	employeeRepo := mongodb.NewEmployeeRepository(db)
 	scheduleRepo := mongodb.NewScheduleRepository(db)
+	companyRepo := mongodb.NewCompanyConfigRepository(db)
 
 	// Initialize n8n client
 	n8nClient := n8n.NewClient(cfg.N8NWebhookURL)
 
 	// Initialize services
 	employeeService := service.NewEmployeeService(employeeRepo)
-	scheduleService := service.NewScheduleService(scheduleRepo, employeeRepo, n8nClient)
+	scheduleService := service.NewScheduleService(scheduleRepo, employeeRepo, companyRepo, n8nClient)
 
 	// Initialize handlers
 	homeHandler := handler.NewHomeHandler()
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
 	scheduleHandler := handler.NewScheduleHandler(scheduleService)
 	healthHandler := handler.NewHealthHandler(employeeRepo)
+	companyConfigHandler := handler.NewCompanyConfigHandler(companyRepo)
 
 	// Setup routes
 	mux := http.NewServeMux()
@@ -81,6 +83,10 @@ func main() {
 	mux.HandleFunc("POST /schedules/generate", scheduleHandler.GenerateBiweeklySchedule)
 	mux.HandleFunc("POST /schedules/{id}/send", scheduleHandler.SendToN8N)
 	mux.HandleFunc("DELETE /schedules/{id}", scheduleHandler.DeleteSchedule)
+
+	// Company configuration routes
+	mux.HandleFunc("GET /config", companyConfigHandler.ShowConfig)
+	mux.HandleFunc("POST /api/company-config", companyConfigHandler.SaveConfig)
 
 	// Initialize and start scheduler if enabled
 	var sched *scheduler.Scheduler

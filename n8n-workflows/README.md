@@ -29,13 +29,29 @@ This directory contains ready-to-use n8n workflows for automating schedule distr
 
 **Use case:** Complete automated workflow with logging and calendar
 
+### 3. AI Schedule Analysis (`ai-schedule-analysis.json`)
+**Best for:** AI-powered schedule optimization and analysis
+
+**Features:**
+- ✅ Webhook trigger
+- ✅ AI Agent with company context
+- ✅ Supports Grok, OpenAI, Claude, Ollama
+- ✅ Policy violation detection
+- ✅ Fairness assessment
+- ✅ Optimization suggestions
+
+**Use case:** Get AI feedback on generated schedules before publishing
+
 ## Quick Start
 
 ### Step 1: Import Workflow
 
 1. Open n8n (locally or cloud)
 2. Click **"Add workflow"** → **"Import from File"**
-3. Select `simple-starter.json` or `schedule-automation.json`
+3. Select your desired workflow:
+   - `simple-starter.json` - For basic notifications
+   - `schedule-automation.json` - For full automation
+   - `ai-schedule-analysis.json` - For AI analysis
 4. Click **"Import"**
 
 ### Step 2: Get Webhook URL
@@ -111,7 +127,126 @@ Webhook → Response                    → Google Sheets
 - **High Hours Check**: Alerts if hours > 120
 - **Alert High Hours**: Sends warning to Slack
 
+### AI Schedule Analysis Workflow
+
+```
+Webhook → AI Agent → Respond to Webhook
+```
+
+**How it works:**
+1. **Webhook** receives schedule data from RestySched (includes company context)
+2. **AI Agent** analyzes the schedule using your chosen AI provider
+3. **Respond to Webhook** returns the analysis back to RestySched
+
+**Setup Instructions:**
+
+1. **Import the workflow** (`ai-schedule-analysis.json`)
+2. **Click the "AI Agent" node**
+3. **Add a Chat Model sub-node** - Choose your AI provider:
+   - **For Grok** (recommended if you have credits):
+     - Click "+" to add a sub-node
+     - Search for "HTTP Request" or "OpenAI" (Grok uses OpenAI-compatible API)
+     - Configure as shown below
+   - **For OpenAI** (GPT-4, GPT-3.5):
+     - Add "OpenAI Chat Model" sub-node
+     - Add your OpenAI API key
+   - **For Claude** (Anthropic):
+     - Add "Anthropic Chat Model" sub-node
+     - Add your Anthropic API key
+   - **For Ollama** (Free/Local):
+     - Add "Ollama Chat Model" sub-node
+     - Point to your local Ollama instance
+
+4. **Get webhook URL** from the Webhook node
+5. **Add to .env**: `N8N_WEBHOOK_URL=your-webhook-url`
+6. **Activate the workflow** in n8n
+
 ## Configuration Guides
+
+### AI Provider Setup
+
+#### Grok (xAI) Setup
+
+**Best for:** If you have Grok API credits
+
+1. **Get API Key:**
+   - Go to https://console.x.ai
+   - Create an account or login
+   - Navigate to API Keys
+   - Create a new API key
+   - Copy the key (starts with `xai-...`)
+
+2. **Configure in n8n:**
+   - In the AI Agent node, add an HTTP Request sub-node
+   - Method: POST
+   - URL: `https://api.x.ai/v1/chat/completions`
+   - Authentication: Header Auth
+   - Header Name: `Authorization`
+   - Header Value: `Bearer YOUR_GROK_API_KEY`
+   - Body (JSON):
+     ```json
+     {
+       "model": "grok-beta",
+       "messages": [{"role": "user", "content": "{{ $input.text }}"}],
+       "temperature": 0.7
+     }
+     ```
+
+**Cost:** ~$1/month for 100 schedules
+
+#### OpenAI Setup
+
+**Best for:** High-quality analysis, widely supported
+
+1. **Get API Key:**
+   - Go to https://platform.openai.com
+   - Create account or login
+   - Navigate to API Keys
+   - Create new key
+   - Copy the key
+
+2. **Configure in n8n:**
+   - Add "OpenAI Chat Model" sub-node to AI Agent
+   - Paste your API key
+   - Select model: `gpt-4o-mini` (recommended for cost) or `gpt-4o` (best quality)
+
+**Cost:**
+- GPT-4o-mini: ~$0.08/month for 100 schedules (recommended)
+- GPT-4o: ~$1.30/month for 100 schedules
+
+#### Claude (Anthropic) Setup
+
+**Best for:** Excellent reasoning and nuanced analysis
+
+1. **Get API Key:**
+   - Go to https://console.anthropic.com
+   - Create account
+   - Navigate to API Keys
+   - Create new key
+
+2. **Configure in n8n:**
+   - Add "Anthropic Chat Model" sub-node
+   - Paste your API key
+   - Select model: `claude-3-5-sonnet-20241022`
+
+**Cost:** ~$1.50/month for 100 schedules
+
+#### Ollama Setup (Free/Local)
+
+**Best for:** Free, private, no API costs
+
+1. **Install Ollama:**
+   - Download from https://ollama.ai
+   - Install on your machine
+   - Run: `ollama pull llama3.2` (or other model)
+
+2. **Configure in n8n:**
+   - Add "Ollama Chat Model" sub-node
+   - Base URL: `http://localhost:11434` (default)
+   - Model: `llama3.2` or your chosen model
+
+**Cost:** FREE (runs locally)
+**Quality:** 6-7/10 (good for basic analysis)
 
 ### Slack Integration
 

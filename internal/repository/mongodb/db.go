@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -44,7 +45,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 
 	// Email unique index
 	_, err := employeesCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    map[string]interface{}{"email": 1},
+		Keys:    bson.D{{Key: "email", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
 	if err != nil {
@@ -53,7 +54,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 
 	// Active index
 	_, err = employeesCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{"active": 1},
+		Keys: bson.D{{Key: "active", Value: 1}},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create active index: %w", err)
@@ -62,11 +63,11 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	// Schedules collection indexes
 	schedulesCollection := db.Collection("schedules")
 
-	// Period index
+	// Period index (compound index)
 	_, err = schedulesCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{
-			"period_start": 1,
-			"period_end":   1,
+		Keys: bson.D{
+			{Key: "period_start", Value: 1},
+			{Key: "period_end", Value: 1},
 		},
 	})
 	if err != nil {
@@ -75,7 +76,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 
 	// Status index
 	_, err = schedulesCollection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: map[string]interface{}{"status": 1},
+		Keys: bson.D{{Key: "status", Value: 1}},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create status index: %w", err)

@@ -74,14 +74,15 @@ func GetShiftDefinition(shiftType string) *ShiftDefinition {
 
 // N8NSchedulePayload represents the data sent to n8n webhook
 type N8NSchedulePayload struct {
-	ScheduleID  string              `json:"schedule_id"`
-	PeriodStart string              `json:"period_start"`
-	PeriodEnd   string              `json:"period_end"`
-	Employees   []N8NEmployeeData   `json:"employees"`
-	Assignments []ShiftAssignment   `json:"assignments"`
-	TotalShifts int                 `json:"total_shifts"`
-	TotalHours  float64             `json:"total_hours"`
-	GeneratedAt string              `json:"generated_at"`
+	ScheduleID     string              `json:"schedule_id"`
+	PeriodStart    string              `json:"period_start"`
+	PeriodEnd      string              `json:"period_end"`
+	Employees      []N8NEmployeeData   `json:"employees"`
+	Assignments    []ShiftAssignment   `json:"assignments"`
+	TotalShifts    int                 `json:"total_shifts"`
+	TotalHours     float64             `json:"total_hours"`
+	GeneratedAt    string              `json:"generated_at"`
+	CompanyContext string              `json:"company_context"` // Company policies and requirements for AI agent
 }
 
 // N8NEmployeeData represents employee data for n8n
